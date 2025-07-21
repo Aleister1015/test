@@ -368,7 +368,7 @@ function toggleVoice() {
 
 function startVoice() {
   const username = localStorage.getItem("username") || "guest";
-  voiceSocket = new WebSocket(`ws://${location.host}/voice/${username}`);
+  voiceSocket = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/voice/${username}`);
 
   voiceSocket.onopen = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
