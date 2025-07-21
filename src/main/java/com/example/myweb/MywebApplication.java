@@ -30,7 +30,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class MywebApplication {
 
     public static void main(String[] args) {
+        // ➤ 印出環境變數確認是否有讀到 Render 設定的值
+        System.out.println("🌍 MONGODB_URI = " + System.getenv("MONGODB_URI"));
+
         SpringApplication.run(MywebApplication.class, args);
     }
 
 }
+
