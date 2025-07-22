@@ -81,31 +81,6 @@
   <script src="/js/game-front-page.js" defer></script>
   <script src="/js/chatroom.js" defer></script>
 
-  <script>
-  const voiceSocket = new WebSocket("wss://" + window.location.host + "/ws/voice");
-
-  voiceSocket.onopen = function () {
-    console.log("✅ 語音 WebSocket 已連線");
-  };
-
-  voiceSocket.onmessage = function (event) {
-    console.log("📥 收到語音訊息：", event.data);
-  };
-
-  voiceSocket.onerror = function (error) {
-    console.error("❌ WebSocket 錯誤：", error);
-  };
-
-  voiceSocket.onclose = function () {
-    console.log("🔌 語音 WebSocket 已關閉");
-  };
-
-  function toggleVoice() {
-    // 測試時先發送純文字
-    voiceSocket.send("🎤 玩家點了語音按鈕");
-    alert("送出語音訊息（實際錄音功能尚未實作）");
-  }
-</script>
-
+  
 </body>
 </html>
