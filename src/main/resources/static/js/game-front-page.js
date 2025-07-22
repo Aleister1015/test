@@ -214,8 +214,7 @@ function connectWebSocket(){
     window.stompClient=Stomp.over(socket);
   }
   const stompClient=window.stompClient;
-  if(stompClient.connected)return;
-
+ 
   stompClient.connect({},()=>{
     stompClient.subscribe(`/topic/room/${roomId}`,async msg=>{
       const body = msg.body.trim();  // ✅ 加這一行！
