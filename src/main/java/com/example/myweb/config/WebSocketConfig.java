@@ -35,8 +35,12 @@ public void configureClientInboundChannel(@NonNull ChannelRegistration registrat
 public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
                 MessageHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, MessageHeaderAccessor.class);
                 if (accessor != null) {
-                    accessor.setLeaveMutable(true);
-                }
+    try {
+        accessor.setLeaveMutable(true);
+    } catch (IllegalStateException ignored) {
+        // 如果已經 immutable，跳過即可
+    }
+}
                 return message;
             }
         });

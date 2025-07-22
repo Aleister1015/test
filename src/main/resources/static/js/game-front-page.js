@@ -239,11 +239,13 @@ function connectWebSocket(){
       }
     });
     stompClient.subscribe("/topic/voice", (msg) => {
+  console.log("📡 收到語音封包大小：", msg.binaryBody?.byteLength); // ✅ 檢查接收
   const blob = new Blob([msg.binaryBody], { type: 'audio/webm' });
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
-  audio.play();
+  audio.play(); // ✅ 播放語音
 });
+
 
   });
 }
@@ -367,12 +369,14 @@ async function toggleVoice() {
 
   if (stompVoiceEnabled) {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stompVoiceRecorder = new MediaRecorder(stream);
-    stompVoiceRecorder.ondataavailable = (e) => {
-      if (window.stompClient && window.stompClient.connected) {
-        window.stompClient.send("/app/voice", {}, e.data);
-      }
-    };
+    stompVoiceRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); // ⚠️ 設定 MIME
+stompVoiceRecorder.ondataavailable = (e) => {
+  console.log("🎤 發送語音封包大小：", e.data.size); // ✅ 加這行檢查送出
+  if (window.stompClient && window.stompClient.connected) {
+    window.stompClient.send("/app/voice", {}, e.data); // ✅ 傳送語音封包
+  }
+};
+
     stompVoiceRecorder.start(250);
   } else {
     if (stompVoiceRecorder) stompVoiceRecorder.stop();
