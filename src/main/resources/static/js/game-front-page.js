@@ -238,6 +238,13 @@ function connectWebSocket(){
         window.location.href=`/vote.html?roomId=${roomId}`;
       }
     });
+    stompClient.subscribe("/topic/voice", (msg) => {
+  const blob = new Blob([msg.binaryBody], { type: 'audio/webm' });
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  audio.play();
+});
+
   });
 }
 
@@ -349,55 +356,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ✅ 顯示本回合統計與歷史任務結果
   await fetchMissionSummary();
 });
-// ✅ 語音功能
-let mediaRecorder;
-let voiceSocket;
-let voiceEnabled = false;
 
-function toggleVoice() {
-  if (!voiceEnabled) {
-    startVoice();
-    document.getElementById("toggle-voice-btn").innerText = "🛑 關閉語音";
-    voiceEnabled = true;
-  } else {
-    stopVoice();
-    document.getElementById("toggle-voice-btn").innerText = "🎤 開啟語音";
-    voiceEnabled = false;
-  }
-}
+let stompVoiceRecorder;
+let stompVoiceEnabled = false;
 
-function startVoice() {
-  const username = localStorage.getItem("username") || "guest";
-  voiceSocket = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/voice/${username}`);
+async function toggleVoice() {
+  stompVoiceEnabled = !stompVoiceEnabled;
+  const btn = document.getElementById("toggle-voice-btn");
+  btn.innerText = stompVoiceEnabled ? "🛑 關閉語音" : "🎤 開啟語音";
 
-  voiceSocket.onopen = async () => {
+  if (stompVoiceEnabled) {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    mediaRecorder.ondataavailable = (e) => {
-      if (voiceSocket.readyState === WebSocket.OPEN) {
-        voiceSocket.send(e.data);
+    stompVoiceRecorder = new MediaRecorder(stream);
+    stompVoiceRecorder.ondataavailable = (e) => {
+      if (window.stompClient && window.stompClient.connected) {
+        window.stompClient.send("/app/voice", {}, e.data);
       }
     };
-    mediaRecorder.start(250);
-    console.log("🎤 語音已啟用");
-  };
-
-  voiceSocket.onmessage = (event) => {
-    const audioBlob = new Blob([event.data], { type: 'audio/webm' });
-    const audioURL = URL.createObjectURL(audioBlob);
-    const audio = new Audio(audioURL);
-    audio.play();
-  };
-
-  voiceSocket.onclose = () => {
-    console.log("🛑 語音 WebSocket 關閉");
-  };
+    stompVoiceRecorder.start(250);
+  } else {
+    if (stompVoiceRecorder) stompVoiceRecorder.stop();
+  }
 }
-
-function stopVoice() {
-  if (mediaRecorder) mediaRecorder.stop();
-  if (voiceSocket) voiceSocket.close();
-  console.log("🛑 語音已關閉");
-}
- 
 
