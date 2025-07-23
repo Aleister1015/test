@@ -237,13 +237,14 @@ function connectWebSocket(){
         window.location.href=`/vote.html?roomId=${roomId}`;
       }
     });
-    stompClient.subscribe("/topic/voice", (msg) => {
-  console.log("📡 收到語音封包大小：", msg.binaryBody?.byteLength); // ✅ 檢查接收
-  const blob = new Blob([msg.binaryBody], { type: 'audio/webm' });
-  const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
-  audio.play(); // ✅ 播放語音
+    
+ stompClient.subscribe("/topic/voice", (msg) => {
+  const base64 = msg.body;
+  console.log("📡 收到語音 base64 字串，長度：", base64.length);
+  const audio = new Audio("data:audio/webm;base64," + base64);
+  audio.play();
 });
+
 
 
   });

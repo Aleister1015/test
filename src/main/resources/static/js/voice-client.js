@@ -19,12 +19,17 @@ async function startRecording() {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   mediaRecorder = new MediaRecorder(stream);
 
-  mediaRecorder.ondataavailable = (e) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(e.data); // 傳送 blob 音訊資料
+ mediaRecorder.ondataavailable = (e) => {
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    const base64 = reader.result.split(',')[1]; // 去掉 data:audio/webm;base64, 開頭
+    if (stompClient && stompClient.connected) {
+      stompClient.send("/app/voice", {}, base64);
+      console.log("📤 發送語音 base64 字串，長度：", base64.length);
     }
   };
-
+  reader.readAsDataURL(e.data);
+};
   mediaRecorder.start(250); // 每 250ms 傳送一次
   console.log("🎤 開始錄音...");
 }
