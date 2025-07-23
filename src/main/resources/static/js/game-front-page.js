@@ -353,8 +353,35 @@ document.addEventListener("DOMContentLoaded", async () => {
   await fetchMissionSummary();
 });
 
+// 你的前面邏輯保持不變（省略）
+
+
 let stompVoiceRecorder;
 let stompVoiceEnabled = false;
+let voiceSocket;
+
+function connectVoiceWebSocket() {
+  voiceSocket = new WebSocket("wss://test-rm7m.onrender.com/voice");
+  voiceSocket.binaryType = "blob";
+
+  voiceSocket.onopen = () => {
+    console.log("🎧 語音 WebSocket 已連線！");
+  };
+
+  voiceSocket.onmessage = (event) => {
+    const blob = event.data;
+    const audio = new Audio(URL.createObjectURL(blob));
+    audio.play();
+  };
+
+  voiceSocket.onerror = (err) => {
+    console.error("❌ 語音 WebSocket 發生錯誤", err);
+  };
+
+  voiceSocket.onclose = () => {
+    console.warn("🛑 語音 WebSocket 關閉");
+  };
+}
 
 async function toggleVoice() {
   stompVoiceEnabled = !stompVoiceEnabled;
@@ -363,17 +390,52 @@ async function toggleVoice() {
 
   if (stompVoiceEnabled) {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stompVoiceRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }); // ⚠️ 設定 MIME
-stompVoiceRecorder.ondataavailable = (e) => {
-  console.log("🎤 發送語音封包大小：", e.data.size); // ✅ 加這行檢查送出
-  if (window.stompClient && window.stompClient.connected) {
-    window.stompClient.send("/app/voice", {}, e.data); // ✅ 傳送語音封包
-  }
-};
+    stompVoiceRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+    stompVoiceRecorder.ondataavailable = (e) => {
+      console.log("🎤 發送語音封包大小：", e.data.size);
+      if (voiceSocket && voiceSocket.readyState === WebSocket.OPEN) {
+        voiceSocket.send(e.data);
+      }
+    };
 
     stompVoiceRecorder.start(250);
   } else {
-    if (stompVoiceRecorder) stompVoiceRecorder.stop();
+    if (stompVoiceRecorder && stompVoiceRecorder.state !== "inactive") {
+      stompVoiceRecorder.stop();
+    }
   }
 }
 
+// ✅ 整合所有初始化行為
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    await fetch(`/api/room/${roomId}/assign-roles`, { method: 'POST' });
+
+    const res = await fetch(`/api/room/${roomId}`);
+    if (res.ok) {
+      const room = await res.json();
+      localStorage.setItem("roomName", room.roomName || "");
+    }
+
+    await fetchPlayers();
+    await fetchAssignedRoles();
+
+    const playerName = sessionStorage.getItem("playerName");
+    const avatar = sessionStorage.getItem("playerAvatar");
+    if (playerName) localStorage.setItem("username", playerName);
+    if (avatar) localStorage.setItem("selectedAvatar", avatar);
+    const my = players.find(p => p.name === playerName);
+    if (my && my.role) {
+      localStorage.setItem("myRole", my.role);
+    }
+
+    document.getElementById("select-expedition-btn")?.addEventListener("click", openSelectModal);
+
+    connectWebSocket();        // ✅ 遊戲控制 STOMP
+    connectVoiceWebSocket();  // ✅ 語音 WebSocket 傳輸
+    await fetchMissionSummary();
+  } catch (err) {
+    console.error("❌ 初始化失敗", err);
+  }
+});
