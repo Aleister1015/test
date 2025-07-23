@@ -304,7 +304,8 @@ async function fetchMissionSummary() {
   function startJitsiMeeting() {
   const container = document.getElementById("jitsi-container");
   container.innerHTML = "";
-  const domain = "meet.jit.si";
+ const domain = "discipline-bucks-valentine-realtors.trycloudflare.com";
+
   const options = {
     roomName: `avalon-room-${roomId}`,
     width: 400,
