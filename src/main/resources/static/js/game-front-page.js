@@ -358,22 +358,16 @@ let localStream;
 let signalSocket;
 
 async function startVoiceCall() {
-  // 取得使用者麥克風
   localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-  // 建立 RTCPeerConnection
   peerConnection = new RTCPeerConnection({
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" }
-    ]
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
   });
 
-  // 加入麥克風串流
   localStream.getTracks().forEach(track => {
     peerConnection.addTrack(track, localStream);
   });
 
-  // 處理接收到的語音串流
   peerConnection.ontrack = (event) => {
     const [remoteStream] = event.streams;
     const audio = new Audio();
@@ -381,9 +375,8 @@ async function startVoiceCall() {
     audio.play();
   };
 
-  // ICE candidate 傳送給對方
   peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
+    if (event.candidate && signalSocket && signalSocket.readyState === WebSocket.OPEN) {
       signalSocket.send(JSON.stringify({
         type: "candidate",
         candidate: event.candidate
@@ -391,7 +384,6 @@ async function startVoiceCall() {
     }
   };
 
-  // 建立 WebSocket signaling 連線
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const host = location.host;
   signalSocket = new WebSocket(`${protocol}://${host}/signal`);
@@ -399,10 +391,9 @@ async function startVoiceCall() {
   signalSocket.onopen = async () => {
     console.log("📡 signaling 已連線");
 
-    // 建立 offer
+    // ✅ WebSocket 確保 open 後再 createOffer
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
-
     signalSocket.send(JSON.stringify({
       type: "offer",
       sdp: offer
@@ -435,7 +426,6 @@ async function startVoiceCall() {
 
 
 
-
 // ✅ 整合所有初始化行為
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -462,7 +452,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("select-expedition-btn")?.addEventListener("click", openSelectModal);
 
     connectWebSocket();        // ✅ 遊戲控制 STOMP
-    connectVoiceWebSocket();  // ✅ 語音 WebSocket 傳輸
     await fetchMissionSummary();
   } catch (err) {
     console.error("❌ 初始化失敗", err);
