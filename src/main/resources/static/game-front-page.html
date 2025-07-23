@@ -9,8 +9,10 @@
   <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 </head>
 <body>
-<button onclick="startVoiceCall()">🎤 啟動語音通話</button>
+<button id="join-voice-btn">🎤 加入語音通話</button>
 
+
+<div id="jitsi-container" style="position:fixed; bottom:10px; right:10px; z-index:1000;"></div>
 
   <!-- ✅ 修改：左上角顯示輪數 -->
   <div id="round-label" class="top-left">第 1 輪</div>
@@ -79,6 +81,7 @@
 
   <script src="/js/game-front-page.js" defer></script>
   <script src="/js/chatroom.js" defer></script>
+<script src="https://meet.jit.si/external_api.js"></script>
 
   <script>
   console.log("🌐 網頁載入完成，開始連接 STOMP");
