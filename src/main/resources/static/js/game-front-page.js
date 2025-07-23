@@ -393,7 +393,19 @@ async function toggleVoice() {
 
   if (stompVoiceEnabled) {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stompVoiceRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+   let mimeType = '';
+
+if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+  mimeType = 'audio/webm;codecs=opus';
+} else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+  mimeType = 'audio/ogg;codecs=opus';
+} else {
+  alert('❌ 你的瀏覽器不支援錄音格式');
+  return;
+}
+
+stompVoiceRecorder = new MediaRecorder(stream, { mimeType });
+
 
     stompVoiceRecorder.ondataavailable = (e) => {
       console.log("🎤 發送語音封包大小：", e.data.size);
