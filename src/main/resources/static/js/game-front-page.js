@@ -361,7 +361,9 @@ let stompVoiceEnabled = false;
 let voiceSocket;
 
 function connectVoiceWebSocket() {
-  voiceSocket = new WebSocket("wss://test-rm7m.onrender.com/voice");
+  const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+  const host = location.host; // ✅ 自動抓 render 網域或本機
+  voiceSocket = new WebSocket(`${protocol}://${host}/ws/voice`);
   voiceSocket.binaryType = "blob";
 
   voiceSocket.onopen = () => {
@@ -382,6 +384,7 @@ function connectVoiceWebSocket() {
     console.warn("🛑 語音 WebSocket 關閉");
   };
 }
+
 
 async function toggleVoice() {
   stompVoiceEnabled = !stompVoiceEnabled;
