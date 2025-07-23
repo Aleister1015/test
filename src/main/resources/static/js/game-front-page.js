@@ -370,16 +370,27 @@ function connectVoiceWebSocket() {
     console.log("🎧 語音 WebSocket 已連線！");
   };
 
-  voiceSocket.onmessage = (event) => {
+ voiceSocket.onmessage = (event) => {
   const blob = event.data;
+  const reader = new FileReader();
 
-  const audio = document.createElement('audio');
-  audio.src = URL.createObjectURL(blob);
-  audio.type = blob.type || 'audio/webm;codecs=opus';
-  audio.play().catch(err => {
-    console.error("❌ 音訊播放失敗：", err);
-  });
+  reader.onloadend = () => {
+    const arrayBuffer = reader.result;
+
+    const context = new (window.AudioContext || window.webkitAudioContext)();
+    context.decodeAudioData(arrayBuffer).then((buffer) => {
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(context.destination);
+      source.start(0);
+    }).catch(e => {
+      console.error("❌ 解碼音訊失敗", e);
+    });
+  };
+
+  reader.readAsArrayBuffer(blob);
 };
+
 
 
   voiceSocket.onerror = (err) => {
