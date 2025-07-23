@@ -320,124 +320,121 @@ async function fetchMissionSummary() {
 
 
 
-// ✅ 頁面載入後執行主邏輯
 document.addEventListener("DOMContentLoaded", async () => {
-  await fetch(`/api/room/${roomId}/assign-roles`, { method: 'POST' });
-
   try {
+    await fetch(`/api/room/${roomId}/assign-roles`, { method: 'POST' });
+
     const res = await fetch(`/api/room/${roomId}`);
     if (res.ok) {
       const room = await res.json();
       localStorage.setItem("roomName", room.roomName || "");
     }
+
+    await fetchPlayers();
+    await fetchAssignedRoles();
+
+    const playerName = sessionStorage.getItem("playerName");
+    const avatar = sessionStorage.getItem("playerAvatar");
+    if (playerName) localStorage.setItem("username", playerName);
+    if (avatar) localStorage.setItem("selectedAvatar", avatar);
+    const my = players.find(p => p.name === playerName);
+    if (my && my.role) {
+      localStorage.setItem("myRole", my.role);
+    }
+
+    document.getElementById("select-expedition-btn")?.addEventListener("click", openSelectModal);
+
+    connectWebSocket();      // ✅ STOMP 控制邏輯
+    await startVoiceCall();  // ✅ WebRTC 語音啟動
+
+    await fetchMissionSummary();
   } catch (err) {
-    console.error("❌ 無法取得房間名稱：", err);
+    console.error("❌ 初始化失敗", err);
   }
-
-  await fetchPlayers();
-  await fetchAssignedRoles();
-
-  const playerName = sessionStorage.getItem("playerName");
-  const avatar = sessionStorage.getItem("playerAvatar");
-  if (playerName) localStorage.setItem("username", playerName);
-  if (avatar) localStorage.setItem("selectedAvatar", avatar);
-  const my = players.find(p => p.name === playerName);
-  if (my && my.role) {
-    localStorage.setItem("myRole", my.role);
-  }
-
-  document.getElementById("select-expedition-btn")?.addEventListener("click", openSelectModal);
-  connectWebSocket();
-
-  // ✅ 顯示本回合統計與歷史任務結果
-  await fetchMissionSummary();
 });
 
-// 你的前面邏輯保持不變（省略）
+let peerConnection;
+let localStream;
+let signalSocket;
 
+async function startVoiceCall() {
+  // 取得使用者麥克風
+  localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-let stompVoiceRecorder;
-let stompVoiceEnabled = false;
-let voiceSocket;
+  // 建立 RTCPeerConnection
+  peerConnection = new RTCPeerConnection({
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" }
+    ]
+  });
 
-function connectVoiceWebSocket() {
-  const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  const host = location.host; // ✅ 自動抓 render 網域或本機
-  voiceSocket = new WebSocket(`${protocol}://${host}/ws/voice`);
-  voiceSocket.binaryType = "blob";
+  // 加入麥克風串流
+  localStream.getTracks().forEach(track => {
+    peerConnection.addTrack(track, localStream);
+  });
 
-  voiceSocket.onopen = () => {
-    console.log("🎧 語音 WebSocket 已連線！");
+  // 處理接收到的語音串流
+  peerConnection.ontrack = (event) => {
+    const [remoteStream] = event.streams;
+    const audio = new Audio();
+    audio.srcObject = remoteStream;
+    audio.play();
   };
 
- voiceSocket.onmessage = (event) => {
-  const blob = event.data;
-  const reader = new FileReader();
-
-  reader.onloadend = () => {
-    const arrayBuffer = reader.result;
-
-    const context = new (window.AudioContext || window.webkitAudioContext)();
-    context.decodeAudioData(arrayBuffer).then((buffer) => {
-      const source = context.createBufferSource();
-      source.buffer = buffer;
-      source.connect(context.destination);
-      source.start(0);
-    }).catch(e => {
-      console.error("❌ 解碼音訊失敗", e);
-    });
-  };
-
-  reader.readAsArrayBuffer(blob);
-};
-
-
-
-  voiceSocket.onerror = (err) => {
-    console.error("❌ 語音 WebSocket 發生錯誤", err);
-  };
-
-  voiceSocket.onclose = () => {
-    console.warn("🛑 語音 WebSocket 關閉");
-  };
-}
-
-
-async function toggleVoice() {
-  stompVoiceEnabled = !stompVoiceEnabled;
-  const btn = document.getElementById("toggle-voice-btn");
-  btn.innerText = stompVoiceEnabled ? "🛑 關閉語音" : "🎤 開啟語音";
-
-  if (stompVoiceEnabled) {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-   let mimeType = '';
-
-if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-  mimeType = 'audio/webm;codecs=opus';
-} else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
-  mimeType = 'audio/ogg;codecs=opus';
-} else {
-  alert('❌ 你的瀏覽器不支援錄音格式');
-  return;
-}
-
-stompVoiceRecorder = new MediaRecorder(stream, { mimeType });
-
-
-    stompVoiceRecorder.ondataavailable = (e) => {
-      console.log("🎤 發送語音封包大小：", e.data.size);
-      if (voiceSocket && voiceSocket.readyState === WebSocket.OPEN) {
-        voiceSocket.send(e.data);
-      }
-    };
-
-    stompVoiceRecorder.start(250);
-  } else {
-    if (stompVoiceRecorder && stompVoiceRecorder.state !== "inactive") {
-      stompVoiceRecorder.stop();
+  // ICE candidate 傳送給對方
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+      signalSocket.send(JSON.stringify({
+        type: "candidate",
+        candidate: event.candidate
+      }));
     }
-  }
+  };
+
+  // 建立 WebSocket signaling 連線
+  const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+  const host = location.host;
+  signalSocket = new WebSocket(`${protocol}://${host}/signal`);
+
+  signalSocket.onopen = async () => {
+    console.log("📡 signaling 已連線");
+
+    // 建立 offer
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    signalSocket.send(JSON.stringify({
+      type: "offer",
+      sdp: offer
+    }));
+  };
+
+  signalSocket.onmessage = async (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.type === "offer") {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      signalSocket.send(JSON.stringify({ type: "answer", sdp: answer }));
+    }
+
+    if (data.type === "answer") {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    }
+
+    if (data.type === "candidate") {
+      try {
+        await peerConnection.addIceCandidate(data.candidate);
+      } catch (err) {
+        console.error("❌ 加入 candidate 失敗", err);
+      }
+    }
+  };
 }
+
+
+
 
 // ✅ 整合所有初始化行為
 document.addEventListener("DOMContentLoaded", async () => {

@@ -1,27 +1,25 @@
 package com.example.myweb.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.lang.NonNull;
+import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
-import com.example.myweb.websocket.VoiceWebSocketHandler;
+import com.example.myweb.websocket.SignalWebSocketHandler;
 
 @Configuration
 @EnableWebSocket
 public class RawWebSocketConfig implements WebSocketConfigurer {
 
-    private final VoiceWebSocketHandler voiceWebSocketHandler;
-
-    public RawWebSocketConfig(VoiceWebSocketHandler voiceWebSocketHandler) {
-        this.voiceWebSocketHandler = voiceWebSocketHandler;
+    @Override
+    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        registry.addHandler(signalWebSocketHandler(), "/ws/signal").setAllowedOrigins("*");
     }
 
-    @Override
-    public void registerWebSocketHandlers(@NonNull WebSocketHandlerRegistry registry) {
-        registry
-            .addHandler(voiceWebSocketHandler, "/ws/voice")
-            .setAllowedOrigins("*");
+    @Bean
+    public WebSocketHandler signalWebSocketHandler() {
+        return new SignalWebSocketHandler();
     }
 }
