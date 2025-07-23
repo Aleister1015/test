@@ -371,10 +371,16 @@ function connectVoiceWebSocket() {
   };
 
   voiceSocket.onmessage = (event) => {
-    const blob = event.data;
-    const audio = new Audio(URL.createObjectURL(blob));
-    audio.play();
-  };
+  const blob = event.data;
+
+  const audio = document.createElement('audio');
+  audio.src = URL.createObjectURL(blob);
+  audio.type = blob.type || 'audio/webm;codecs=opus';
+  audio.play().catch(err => {
+    console.error("❌ 音訊播放失敗：", err);
+  });
+};
+
 
   voiceSocket.onerror = (err) => {
     console.error("❌ 語音 WebSocket 發生錯誤", err);
