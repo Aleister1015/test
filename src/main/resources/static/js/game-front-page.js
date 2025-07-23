@@ -238,12 +238,6 @@ function connectWebSocket(){
       }
     });
     
- stompClient.subscribe("/topic/voice", (msg) => {
-  const base64 = msg.body;
-  console.log("📡 收到語音 base64 字串，長度：", base64.length);
-  const audio = new Audio("data:audio/webm;base64," + base64);
-  audio.play();
-});
 
 
 
