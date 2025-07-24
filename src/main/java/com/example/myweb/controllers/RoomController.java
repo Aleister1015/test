@@ -25,7 +25,11 @@
  */
 
 package com.example.myweb.controllers;
-
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,7 +41,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -88,6 +95,7 @@ public class RoomController {
 
    /* -------------------- 取得房間資料 -------------------- */
     // 根據房間 ID 回傳對應房間資料，或 404。
+private static final Logger log = LoggerFactory.getLogger(RoomController.class);
 
     @GetMapping("/room/{roomId}")
     public ResponseEntity<Room> getRoomById(@PathVariable String roomId) {
@@ -106,6 +114,34 @@ public class RoomController {
 
     /* -------------------- 加入與退出房間 -------------------- */
     // 加入房間時檢查：是否存在、人數是否滿、玩家是否重複。
+    @Value("${daily.api.key}")
+private String dailyApiKey;
+private void createDailyRoomIfNotExists(String roomId) {
+    try {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create("https://api.daily.co/v1/rooms"))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + dailyApiKey)
+            .POST(HttpRequest.BodyPublishers.ofString("{\"name\":\"" + roomId + "\", \"properties\": {\"enable_chat\": false, \"enable_screenshare\": false, \"start_video_off\": true}}"))
+            .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 409) {
+            System.out.println("🔁 語音房間已存在: " + roomId);
+        } else if (response.statusCode() != 200) {
+            System.err.println("❌ 無法建立 Daily 房間：" + response.body());
+        } else {
+            System.out.println("✅ 成功建立 Daily 語音房：" + roomId);
+        }
+    } catch (IOException | InterruptedException e) {
+    log.error("Daily 房間建立失敗", e); // 建議使用 log 替代 printStackTrace()
+}
+
+}
+
+
+    
 
     @PostMapping("/join-room")
     public ResponseEntity<Object> joinRoom(@RequestParam String roomId,
@@ -363,6 +399,7 @@ public class RoomController {
 
     @PostMapping("/room/{roomId}/assign-roles")
     public Map<String,Object> assignRoles(@PathVariable String roomId){
+        createDailyRoomIfNotExists(roomId);
 
         Room room = roomService.assignRoles(roomId);
 

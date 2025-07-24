@@ -307,7 +307,7 @@ async function fetchMissionSummary() {
 
   // ✅ Daily 版 iframe 語音（只傳 audio）嵌入
   const iframe = document.createElement("iframe");
-  iframe.src = `https://your-subdomain.daily.co/${roomId}?video=off&audioSource=mic&videoSource=none`;
+iframe.src = `https://jitsigame.daily.co/${roomId}?video=off&audioSource=mic&videoSource=none`;
   iframe.allow = "microphone; camera; autoplay; display-capture";
   iframe.width = "400";
   iframe.height = "300";
