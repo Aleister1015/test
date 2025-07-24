@@ -72,26 +72,44 @@ public class RoomController {
 
     /* -------------------- 建房 -------------------- */
 // 前端建立房間時會送出房名與創建者名稱，若重複就回錯誤訊息，否則存入資料庫。
-    @PostMapping("/create-room")
-    public ResponseEntity<Object> createRoom(@RequestBody Room room,
-                                             @RequestParam String playerName) {
+   @PostMapping("/create-room")
+public ResponseEntity<Object> createRoom(@RequestBody Room room,
+                                         @RequestParam String playerName) {
+    String formattedRoomName = room.getRoomName() + "房間";
+    room.setRoomName(formattedRoomName);
 
-        String formattedRoomName = room.getRoomName() + "房間";
-        room.setRoomName(formattedRoomName);
+    boolean exists = roomRepository.findAll().stream()
+                        .anyMatch(r -> r.getRoomName().equals(room.getRoomName()));
+    if (exists)
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                             .body("房間名稱已存在，請選擇其他名稱！");
 
-        boolean exists = roomRepository.findAll().stream()
-                            .anyMatch(r -> r.getRoomName().equals(room.getRoomName()));
-        if (exists)
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                                 .body("房間名稱已存在，請選擇其他名稱！");
+    // ✅ 語音房分配邏輯
+    List<String> allVoiceRooms = List.of("room1", "room2", "room3", "room4", "room5", "room6", "room7", "room8", "room9", "room10");
 
-        room.setId(UUID.randomUUID().toString());
-        if (!"private".equals(room.getRoomType())) room.setRoomPassword(null);
+    Set<String> usedVoiceRooms = roomRepository.findAll().stream()
+        .map(r -> r.getVoiceRoomName())
+        .filter(name -> name != null && !name.isEmpty())
+        .collect(Collectors.toSet());
 
-        room.setPlayers(new ArrayList<>(List.of(playerName)));
-        roomRepository.save(room);
-        return ResponseEntity.ok(room);
-    }
+    String availableVoiceRoom = allVoiceRooms.stream()
+        .filter(name -> !usedVoiceRooms.contains(name))
+        .findFirst()
+        .orElse(null);
+
+    if (availableVoiceRoom == null)
+        return ResponseEntity.status(503).body("目前無可用語音房");
+
+    room.setVoiceRoomName(availableVoiceRoom); // ✅ 設定語音房
+
+    room.setId(UUID.randomUUID().toString());
+    if (!"private".equals(room.getRoomType())) room.setRoomPassword(null);
+
+    room.setPlayers(new ArrayList<>(List.of(playerName)));
+    roomRepository.save(room);
+    return ResponseEntity.ok(room);
+}
+
 
    /* -------------------- 取得房間資料 -------------------- */
     // 根據房間 ID 回傳對應房間資料，或 404。

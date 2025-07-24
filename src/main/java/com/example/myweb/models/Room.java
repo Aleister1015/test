@@ -1,9 +1,14 @@
 package com.example.myweb.models;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-
-import java.util.*;
 
 /**
  * 遊戲房間資料模型（MongoDB）
@@ -32,6 +37,16 @@ public class Room {
     private Map<String, Boolean> medicSkillUsed = new HashMap<>();
     private Map<Integer, String> medicProtectionMap = new HashMap<>(); 
 
+
+    private String voiceRoomName;
+
+public String getVoiceRoomName() {
+    return voiceRoomName;
+}
+
+public void setVoiceRoomName(String voiceRoomName) {
+    this.voiceRoomName = voiceRoomName;
+}
 
     /* 狀態旗標 */
     private boolean started = false;
