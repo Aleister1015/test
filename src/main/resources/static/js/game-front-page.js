@@ -300,21 +300,35 @@ async function fetchMissionSummary() {
   }
 }
 
-
-  function startVoiceCall() {
+async function startVoiceCall() {
   const container = document.getElementById("jitsi-container");
   container.innerHTML = "";
 
-  // ✅ Daily 版 iframe 語音（只傳 audio）嵌入
-  const iframe = document.createElement("iframe");
-  iframe.src = `https://your-subdomain.daily.co/${roomId}?video=off&audioSource=mic&videoSource=none`;
-  iframe.allow = "microphone; camera; autoplay; display-capture";
-  iframe.width = "400";
-  iframe.height = "300";
-  iframe.style.border = "0";
+  for (let i = 1; i <= 10; i++) {
+    const roomName = `room${i}`;
+    try {
+      const res = await fetch(`/api/check-daily-room/${roomName}`);
+      const data = await res.json();
 
-  container.appendChild(iframe);
+      if (data.participantCount === 0) {
+        const iframe = document.createElement("iframe");
+        iframe.src = `https://jitsigame.daily.co/${roomName}?video=off&audioSource=mic&videoSource=none`;
+        iframe.allow = "microphone; camera; autoplay; display-capture";
+        iframe.width = "400";
+        iframe.height = "300";
+        iframe.style.border = "0";
+        container.appendChild(iframe);
+        return;
+      }
+    } catch (err) {
+      console.error(`❌ 檢查 room${i} 時失敗`, err);
+    }
+  }
+
+  alert("❌ 所有語音房間都已滿，請稍後再試！");
 }
+
+
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     await fetch(`/api/room/${roomId}/assign-roles`, { method: 'POST' });
