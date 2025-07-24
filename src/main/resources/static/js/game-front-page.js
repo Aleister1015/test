@@ -301,29 +301,20 @@ async function fetchMissionSummary() {
 }
 
 
-  function startJitsiMeeting() {
+  function startVoiceCall() {
   const container = document.getElementById("jitsi-container");
   container.innerHTML = "";
- const domain = "discipline-bucks-valentine-realtors.trycloudflare.com";
 
-  const options = {
-    roomName: `avalon-room-${roomId}`,
-    width: 400,
-    height: 300,
-    parentNode: container,
-    configOverwrite: {
-      startWithVideoMuted: true,
-    },
-    interfaceConfigOverwrite: {
-      SHOW_JITSI_WATERMARK: false,
-      SHOW_WATERMARK_FOR_GUESTS: false,
-      DEFAULT_REMOTE_DISPLAY_NAME: '訪客',
-      TOOLBAR_BUTTONS: ['microphone', 'hangup', 'chat']
-    }
-  };
-  new JitsiMeetExternalAPI(domain, options);
+  // ✅ Daily 版 iframe 語音（只傳 audio）嵌入
+  const iframe = document.createElement("iframe");
+  iframe.src = `https://your-subdomain.daily.co/${roomId}?video=off&audioSource=mic&videoSource=none`;
+  iframe.allow = "microphone; camera; autoplay; display-capture";
+  iframe.width = "400";
+  iframe.height = "300";
+  iframe.style.border = "0";
+
+  container.appendChild(iframe);
 }
-
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     await fetch(`/api/room/${roomId}/assign-roles`, { method: 'POST' });
@@ -347,7 +338,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     document.getElementById("select-expedition-btn")?.addEventListener("click", openSelectModal);
-    document.getElementById("join-voice-btn")?.addEventListener("click", startJitsiMeeting);
+    document.getElementById("join-voice-btn")?.addEventListener("click", startVoiceCall);
 
     connectWebSocket();
     await fetchMissionSummary();
